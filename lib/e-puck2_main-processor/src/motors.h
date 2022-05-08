@@ -30,7 +30,7 @@ int32_t left_motor_get_pos(void);
  /**
  * @brief   Reads the position counter of the right motor
  * 
- * @return          position counter of the right motor in step
+ * @return        s
  */
 int32_t right_motor_get_pos(void);
 
