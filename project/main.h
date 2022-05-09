@@ -24,7 +24,12 @@ extern parameter_namespace_t parameter_root;
 //turn the motors
 void turn(double angle);
 double incidence_angle(void);
-void bouncing(double incidence_angle);
+void bouncing(void);
+int goal(void);
+bool check_frequency(void);
+
+
+
 
 
 

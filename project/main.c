@@ -43,6 +43,13 @@
 
 #define SHELL_WA_SIZE   THD_WORKING_AREA_SIZE(2048)
 
+const int field_height = 1345; //actual field height - robot diameter
+const int field_width = 1234;
+const int goal_height = 45;
+const int goal_width = 234;
+static double x = 0, y = 0 ,angle = 0;
+
+
 messagebus_t bus;
 MUTEX_DECL(bus_lock);
 CONDVAR_DECL(bus_condvar);
@@ -457,9 +464,23 @@ double incidence_angle(){
 	}
 	return angle/sum;
 }
+int goal(){
+	if (get_acc(2)>0){
+		return true;
+	}
+	return false;
+}
 
-void bouncing(double incidence_angle){
-	turn(180-incidence_angle*2);
+bool check_frequency(){
+	if (false){
+		return true;
+	}
+	return false;
+}
+
+
+void bouncing(){
+	turn(180-incidence_angle()*2);
 }
 
 
@@ -514,12 +535,14 @@ int main(void)
 
     calibrate_ir();
     //OUR WORKING AREA -------------------
-    turn(180);
+    //turn(180);
 
     //END OF OUR WORKING AREA ------------
 
     /* Infinite loop. */
     while (1) {
+    	if(goal())
+    		set_led(-1,1);
         chThdSleepMilliseconds(1000);
     }
 }
