@@ -40,6 +40,7 @@
 #include "usbcfg.h"
 #include "communication.h"
 #include "uc_usage.h"
+#include "audio_processing.h"
 
 #define SHELL_WA_SIZE   THD_WORKING_AREA_SIZE(2048)
 
@@ -47,7 +48,6 @@ const int field_height = 1345; //actual field height - robot diameter
 const int field_width = 1234;
 const int goal_height = 45;
 const int goal_width = 234;
-static double x = 0, y = 0 ,angle = 0;
 
 
 messagebus_t bus;
@@ -443,9 +443,17 @@ static void serial_start(void)
 void turn(double angle){
 	left_motor_set_pos(0);
 	right_motor_set_pos(0);
-	while(left_motor_get_pos()<(15.7*angle/360)){
-		right_motor_set_speed(300);
-		left_motor_set_speed(-300);
+	if(angle > 0){
+		while(-left_motor_get_pos()<85*(15.7*angle/360)){
+			right_motor_set_speed(300);
+			left_motor_set_speed(-300);
+		}
+	}
+	else{
+		while(left_motor_get_pos()<85*(-15.7*angle/360)){
+			right_motor_set_speed(-300);
+			left_motor_set_speed(300);
+		}
 	}
 	right_motor_set_speed(0);
 	left_motor_set_speed(0);
@@ -464,7 +472,7 @@ double incidence_angle(){
 	}
 	return angle/sum;
 }
-int goal(){
+bool goal(){
 	if (get_acc(2)>0){
 		return true;
 	}
@@ -514,7 +522,7 @@ int main(void)
 	spi_comm_start();
 	VL53L0X_start();
 	serial_start();
-	mic_start(NULL);
+	mic_start(&processAudioData);
 	sdio_start();
 	playMelodyStart();
 	playSoundFileStart();
@@ -535,16 +543,18 @@ int main(void)
 
     calibrate_ir();
     //OUR WORKING AREA -------------------
-    //turn(180);
+    //turn(-90);
 
     //END OF OUR WORKING AREA ------------
 
     /* Infinite loop. */
-    while (1) {
-    	if(goal())
-    		set_led(-1,1);
-        chThdSleepMilliseconds(1000);
-    }
+//    while (1) {
+//    	if(whistle())
+//    		set_led(-1,1);
+//    	if(goal())
+//    		set_led(-1,1);
+//        chThdSleepMilliseconds(1);
+//    }
 }
 
 #define STACK_CHK_GUARD 0xe2dee396

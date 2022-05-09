@@ -25,7 +25,7 @@ extern parameter_namespace_t parameter_root;
 void turn(double angle);
 double incidence_angle(void);
 void bouncing(void);
-int goal(void);
+bool goal(void);
 bool check_frequency(void);
 
 
