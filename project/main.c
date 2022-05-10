@@ -435,6 +435,13 @@ static void serial_start(void)
 //    }
 
 void turn(double angle){
+	if(angle>180){
+		angle-=360;
+	}
+	if(angle<-180){
+			angle+=360;
+		}
+
 	//chprintf((BaseSequentialStream *)&SD3, 1);
 	right_motor_set_speed(0);
 	left_motor_set_speed(0);
@@ -471,30 +478,76 @@ double incidence_angle(){
 //		angle += (get_prox(i)*(-22.5+(i-7)*45));
 //	}
 //	return angle/sum;
-	int closest = -1;
+
+
+//	int closest = -1;
+//	int z;
+//	for(int i = 0; i < 8; i++){
+//		z = get_prox(i);
+//		if((i!=2 && z < 4000 && z > 200) && (closest < 0 || z > get_prox(closest))){ // A VERIFIER!!!!!
+//			closest = i;
+//		}
+//	}
+//
+//	switch(closest){
+//		case 0: return 22.5;
+//		case 1: return 67.5;
+//		case 2: return 112.5;
+//		case 3: return 170;
+//		case 4: return -170;
+//		case 5: return -112.5;
+//		case 6: return -67.5;
+//		case 7: return -22.5;
+//	}
+//	return 200;
+
+	int sum=0;
+	double angle=0;
 	int z;
-	for(int i = 0; i < 8; i++){
-		z = get_prox(i);
-		if((i!=2 && z < 4000 && z > 200) && (closest < 0 || z > get_prox(closest))){ // A VERIFIER!!!!!
-			closest = i;
-		}
+
+	// Z IS NOT CORRECT CAUSE EXPONENTIAL BUT WE WANT A PROPER RATIO?? OR GOOD? IDK
+
+	z = get_prox(0);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*22.5;
+	}
+	z = get_prox(1);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*67.5;
+	}
+	z = get_prox(3);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*170;
+	}
+	z = get_prox(4);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*-170;
+	}
+	z = get_prox(5);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*-112.5;
+	}
+	z = get_prox(6);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*-67.5;
+	}
+	z = get_prox(7);
+	if(z < 4000 && z > 200){
+		sum += z;
+		angle += z*-22.5;
 	}
 
-	switch(closest){
-		case 0: return 22.5;
-		case 1: return 67.5;
-		case 2: return 112.5;
-		case 3: return 170;
-		case 4: return -170;
-		case 5: return -112.5;
-		case 6: return -67.5;
-		case 7: return -22.5;
-	}
-	return 200;
+	return angle/sum;
 }
 
 bool goal(){
-	if (get_acc(2)>200){
+	if (get_acc(2)>20){
 		return true;
 	}
 	return false;
@@ -519,6 +572,7 @@ void bouncing(){
 }
 
 void start(){
+	chprintf((BaseSequentialStream *)&SD3, "battery=%d, %f V \r\n", get_battery_raw(), get_battery_voltage());
 	for(int i = 0; i < 3; i++){
 		chThdSleepMilliseconds(800);
 		set_led(-1,1);
@@ -527,9 +581,9 @@ void start(){
 		set_led(-1,0);
 		dac_stop();
 	}
-
+	chThdSleepMilliseconds(800);
 	while(true){
-		turn(5);
+		turn(15);
 		if(whistle())
 			break;
 	}
