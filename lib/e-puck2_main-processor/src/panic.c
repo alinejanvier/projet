@@ -4,7 +4,6 @@
 void panic_handler(const char *reason)
 {
     (void)reason;
-
 	palClearPad(GPIOD, GPIOD_LED1);
 	palClearPad(GPIOD, GPIOD_LED3);
 	palClearPad(GPIOD, GPIOD_LED5);

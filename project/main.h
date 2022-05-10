@@ -26,7 +26,8 @@ void turn(double angle);
 double incidence_angle(void);
 void bouncing(void);
 bool goal(void);
-bool check_frequency(void);
+void start(void);
+
 
 
 

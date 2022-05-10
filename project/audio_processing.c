@@ -25,7 +25,7 @@ static float micRight_output[FFT_SIZE];
 #define MIN_VALUE_TRESHOLD	10000
 #define MIN_FREQ	10
 #define	MAX_FREQ	30
-#define FREQ_START	26 //900???Hz
+#define FREQ_START	26 //402Hz
 #define FREQ_START_L 	(FREQ_START-1)
 #define FREQ_START_H	(FREQ_START+1)
 

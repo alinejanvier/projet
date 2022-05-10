@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 
 #include "ch.h"
 #include "chprintf.h"
@@ -44,10 +40,8 @@
 
 #define SHELL_WA_SIZE   THD_WORKING_AREA_SIZE(2048)
 
-const int field_height = 1345; //actual field height - robot diameter
-const int field_width = 1234;
-const int goal_height = 45;
-const int goal_width = 234;
+const int speed = 1000;
+static bool bounce_enabled = false;
 
 
 messagebus_t bus;
@@ -441,46 +435,66 @@ static void serial_start(void)
 //    }
 
 void turn(double angle){
+	//chprintf((BaseSequentialStream *)&SD3, 1);
+	right_motor_set_speed(0);
+	left_motor_set_speed(0);
 	left_motor_set_pos(0);
 	right_motor_set_pos(0);
 	if(angle > 0){
+		right_motor_set_speed(speed);
+		left_motor_set_speed(-speed);
 		while(-left_motor_get_pos()<85*(15.7*angle/360)){
-			right_motor_set_speed(300);
-			left_motor_set_speed(-300);
+			chThdSleepMilliseconds(10);
 		}
 	}
 	else{
+		right_motor_set_speed(-speed);
+		left_motor_set_speed(speed);
 		while(left_motor_get_pos()<85*(-15.7*angle/360)){
-			right_motor_set_speed(-300);
-			left_motor_set_speed(300);
+			chThdSleepMilliseconds(10);
 		}
 	}
 	right_motor_set_speed(0);
 	left_motor_set_speed(0);
+	//chprintf((BaseSequentialStream *)&SD3, 8);
 }
 
 double incidence_angle(){
-	int sum=0;
-	double angle=0;
-	for(int i=0; i<4; i++){
-		sum += get_prox(i);
-		angle += (get_prox(i)*(22.5+i*45));
+//	int sum=0;
+//	double angle=0;
+//	for(int i=0; i<4; i++){
+//		sum += get_prox(i);				//put if condition for extreme value
+//		angle += (get_prox(i)*(22.5+i*45));
+//	}
+//	for(int i=4; i<8; i++){
+//		sum += get_prox(i);
+//		angle += (get_prox(i)*(-22.5+(i-7)*45));
+//	}
+//	return angle/sum;
+	int closest = -1;
+	int z;
+	for(int i = 0; i < 8; i++){
+		z = get_prox(i);
+		if((i!=2 && z < 4000 && z > 200) && (closest < 0 || z > get_prox(closest))){ // A VERIFIER!!!!!
+			closest = i;
+		}
 	}
-	for(int i=4; i<8; i++){
-		sum += get_prox(i);
-		angle += (get_prox(i)*(-22.5+(i-7)*45));
+
+	switch(closest){
+		case 0: return 22.5;
+		case 1: return 67.5;
+		case 2: return 112.5;
+		case 3: return 170;
+		case 4: return -170;
+		case 5: return -112.5;
+		case 6: return -67.5;
+		case 7: return -22.5;
 	}
-	return angle/sum;
-}
-bool goal(){
-	if (get_acc(2)>0){
-		return true;
-	}
-	return false;
+	return 200;
 }
 
-bool check_frequency(){
-	if (false){
+bool goal(){
+	if (get_acc(2)>200){
 		return true;
 	}
 	return false;
@@ -488,9 +502,78 @@ bool check_frequency(){
 
 
 void bouncing(){
-	turn(180-incidence_angle()*2);
+	double angle = incidence_angle();
+
+	if(angle >= -90 && angle <=90){
+		turn(180-angle*2); // A VERIFIER ???
+		right_motor_set_speed(speed);
+		left_motor_set_speed(speed);
+	}
+	else if(angle >= -180 && angle <= 180){
+		turn(180-angle/2); // A VERIFIER
+		right_motor_set_speed(speed);
+		left_motor_set_speed(speed);
+	}
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", 69);
+
 }
 
+void start(){
+	for(int i = 0; i < 3; i++){
+		chThdSleepMilliseconds(800);
+		set_led(-1,1);
+		dac_play(402);
+		chThdSleepMilliseconds(300);
+		set_led(-1,0);
+		dac_stop();
+	}
+
+	while(true){
+		turn(5);
+		if(whistle())
+			break;
+	}
+	//set_body_led(1);
+	bounce_enabled = true;
+	right_motor_set_speed(speed);
+	left_motor_set_speed(speed);
+}
+
+
+static THD_WORKING_AREA(BounceThreadWorkingArea, 128);
+static THD_WORKING_AREA(GoalThreadWorkingArea, 128);
+
+static THD_FUNCTION(BounceThread, arg) {
+	int z;
+	while(true){
+		chThdSleepMilliseconds(10);
+		if(bounce_enabled){
+			for(int i = 0; i < 8; i++){
+				z =  get_prox(i);
+				if(z < 3800 && z > 200  && i != 2){ // A VERIFIER !!!!!
+					set_front_led(1);
+					bouncing();
+					set_front_led(0);
+					break;
+				}
+			}
+		}
+	}
+}
+
+static THD_FUNCTION(GoalThread, arg) {
+	while(true){
+		chThdSleepMilliseconds(10);
+		if(goal()){
+			right_motor_set_speed(0);
+			left_motor_set_speed(0);
+			bounce_enabled = false;
+			//set_body_led(0);
+			chThdSleepMilliseconds(7000);
+			start();
+		}
+	}
+}
 
 
 int main(void)
@@ -544,6 +627,64 @@ int main(void)
     calibrate_ir();
     //OUR WORKING AREA -------------------
     //turn(-90);
+
+//
+//    for(int i = 0; i < 5; i++){
+//    	chThdSleepMilliseconds(800);
+//    	set_led(-1,1);
+//    	dac_play(800);
+//    	chThdSleepMilliseconds(300);
+//    	set_led(-1,0);
+//    	dac_stop();
+//    }
+    start();
+
+
+//	while(1){
+//		chThdSleepMilliseconds(300);
+//		chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", get_prox(1));
+//	}
+    //bounce_enabled = true;
+    //right_motor_set_speed(speed);
+    //left_motor_set_speed(speed);
+    //
+//    right_motor_set_speed(speed);
+//    left_motor_set_speed(speed);
+//    int z;
+//    while(true){
+//    	chThdSleepMilliseconds(300);
+//    	for(int i = 0; i < 8; i++){
+//    		z = get_prox(i);
+//			if(z < 300 && z > 100 && i !=2){
+//				set_front_led(1);
+//				bouncing();
+//				set_front_led(0);
+//				break;
+//			}
+//		}
+//    }
+
+//    int z;
+//    while(true){
+//		chThdSleepMilliseconds(300);
+//		for(int i = 0; i < 8; i++){
+//			z = get_prox(i);
+//			if(z < 300 && z > 100 && i !=2){
+//				set_front_led(1);
+//				chThdSleepMilliseconds(50);
+//				set_front_led(0);
+//				break;
+//			}
+//		}
+//    }
+
+
+    //
+
+    (void)chThdCreateStatic(BounceThreadWorkingArea, sizeof(BounceThreadWorkingArea), NORMALPRIO, BounceThread, NULL);
+
+    (void)chThdCreateStatic(GoalThreadWorkingArea, sizeof(GoalThreadWorkingArea), NORMALPRIO, GoalThread, NULL);
+
 
     //END OF OUR WORKING AREA ------------
 
