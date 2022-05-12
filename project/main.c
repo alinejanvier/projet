@@ -42,6 +42,7 @@
 
 const int speed = 1000;
 static bool bounce_enabled = false;
+static bool start_enabled = true;
 
 
 messagebus_t bus;
@@ -508,36 +509,49 @@ double incidence_angle(){
 	// Z IS NOT CORRECT CAUSE EXPONENTIAL BUT WE WANT A PROPER RATIO?? OR GOOD? IDK
 
 	z = get_prox(0);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*22.5;
 	}
 	z = get_prox(1);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*67.5;
 	}
 	z = get_prox(3);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*170;
 	}
 	z = get_prox(4);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*-170;
 	}
 	z = get_prox(5);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*-112.5;
 	}
 	z = get_prox(6);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*-67.5;
 	}
 	z = get_prox(7);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", z);
+
 	if(z < 4000 && z > 200){
 		sum += z;
 		angle += z*-22.5;
@@ -547,7 +561,10 @@ double incidence_angle(){
 }
 
 bool goal(){
-	if (get_acc(2)>20){
+	int acc = get_acc(2);
+	//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", acc);
+	if(acc>14000){
+		//chprintf((BaseSequentialStream *)&SD3, "%1d\r\n\n,", acc);
 		return true;
 	}
 	return false;
@@ -572,7 +589,7 @@ void bouncing(){
 }
 
 void start(){
-	chprintf((BaseSequentialStream *)&SD3, "battery=%d, %f V \r\n", get_battery_raw(), get_battery_voltage());
+	//chprintf((BaseSequentialStream *)&SD3, "battery=%d, %f V \r\n", get_battery_raw(), get_battery_voltage());
 	for(int i = 0; i < 3; i++){
 		chThdSleepMilliseconds(800);
 		set_led(-1,1);
@@ -587,21 +604,23 @@ void start(){
 		if(whistle())
 			break;
 	}
-	//set_body_led(1);
-	bounce_enabled = true;
+	set_body_led(1);
 	right_motor_set_speed(speed);
 	left_motor_set_speed(speed);
+	bounce_enabled = true;
 }
 
 
-static THD_WORKING_AREA(BounceThreadWorkingArea, 128);
-static THD_WORKING_AREA(GoalThreadWorkingArea, 128);
+static THD_WORKING_AREA(BounceThreadWorkingArea, 256);
+static THD_WORKING_AREA(GoalThreadWorkingArea, 256);
 
 static THD_FUNCTION(BounceThread, arg) {
 	int z;
+	chprintf((BaseSequentialStream *)&SD3,"bounce thread started");
 	while(true){
-		chThdSleepMilliseconds(10);
+		chThdSleepMilliseconds(100);
 		if(bounce_enabled){
+			bounce_enabled = false;
 			for(int i = 0; i < 8; i++){
 				z =  get_prox(i);
 				if(z < 3800 && z > 200  && i != 2){ // A VERIFIER !!!!!
@@ -611,20 +630,27 @@ static THD_FUNCTION(BounceThread, arg) {
 					break;
 				}
 			}
+			bounce_enabled = true;
 		}
 	}
 }
 
 static THD_FUNCTION(GoalThread, arg) {
+	chprintf((BaseSequentialStream *)&SD3,"goal thread started");
+
 	while(true){
-		chThdSleepMilliseconds(10);
-		if(goal()){
+		chThdSleepMilliseconds(100);
+		if(start_enabled && goal()){
+			start_enabled = false;
+			bounce_enabled = false;
 			right_motor_set_speed(0);
 			left_motor_set_speed(0);
-			bounce_enabled = false;
-			//set_body_led(0);
+			set_body_led(0);
 			chThdSleepMilliseconds(7000);
 			start();
+			// start enables bouce
+			bounce_enabled = true;
+			start_enabled = true;
 		}
 	}
 }
